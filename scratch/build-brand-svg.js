@@ -1,0 +1,125 @@
+const fs = require('fs');
+const path = require('path');
+
+function generateBrandMonogramSvg() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Matte Brushed Zinc / Titanium Metal Gradient -->
+    <linearGradient id="zinc-metal" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="20%" stop-color="#cbd5e1"/>
+      <stop offset="55%" stop-color="#94a3b8"/>
+      <stop offset="85%" stop-color="#64748b"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+
+    <!-- Ring Subtle Metallic Gradient -->
+    <linearGradient id="ring-metal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#cbd5e1"/>
+      <stop offset="50%" stop-color="#64748b"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+
+    <!-- Emerald Dynamic Glint Glow -->
+    <linearGradient id="emerald-glint" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="40%" stop-color="#10b981"/>
+      <stop offset="80%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#6ee7b7"/>
+    </linearGradient>
+
+    <!-- Soft Ambient Drop Shadow -->
+    <filter id="monogram-shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="emerald-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#monogram-shadow)">
+    <!-- 1. CIRCULAR FRAME RING (Behind letters) -->
+    <path d="M 265 61
+             A 195 195 0 1 0 265 451
+             A 195 195 0 1 0 265 61
+             Z
+             M 265 73
+             A 183 183 0 1 1 265 439
+             A 183 183 0 1 1 265 73
+             Z"
+          fill="url(#ring-metal)"
+          opacity="0.9"/>
+
+    <!-- 2. LETTER "A" (Roman Antiqua with baseline serifs and triangular crossbar) -->
+    <path d="M 265 29
+             L 269 31
+             L 358 226
+             L 326 318
+             L 340 426
+             C 342 436 350 442 368 442
+             L 298 442
+             C 314 442 322 434 318 424
+             L 300 318
+             L 146 318
+             L 146 424
+             C 146 436 156 442 174 442
+             L 26 442
+             C 54 442 66 430 72 396
+             L 74 274
+             C 74 296 90 318 126 318
+             L 136 318
+             L 214 140
+             L 261 31
+             Z
+             M 265 116
+             L 296 298
+             L 202 298
+             Z"
+          fill="url(#zinc-metal)"/>
+
+    <!-- 3. LETTER "S" (Foreground Sculptural Ribbon Swash) -->
+    <path d="M 424 56
+             L 382 56
+             C 320 46 265 42 180 54
+             C 120 80 70 120 60 180
+             C 60 200 110 215 180 245
+             C 250 275 330 310 370 340
+             C 390 365 385 400 355 422
+             C 330 432 290 430 260 426
+             L 260 442
+             C 280 456 320 462 360 456
+             C 420 442 456 405 456 350
+             C 456 330 400 310 320 280
+             C 240 250 165 215 140 190
+             C 140 145 180 105 250 86
+             C 310 76 365 84 395 104
+             C 415 120 424 150 424 192
+             Z"
+          fill="url(#zinc-metal)"/>
+
+    <!-- 4. DYNAMIC EMERALD GLINT ON S CHAMFER -->
+    <path d="M 180 245
+             C 250 275 330 310 370 340
+             C 390 365 385 400 355 422
+             C 335 410 340 375 320 345
+             C 280 315 220 280 180 245
+             Z"
+          fill="url(#emerald-glint)"
+          opacity="0.85"
+          filter="url(#emerald-glow)"/>
+  </g>
+</svg>`;
+}
+
+const svgCode = generateBrandMonogramSvg();
+
+// Write to scratch
+const scratchSvgPath = path.resolve(__dirname, 'as-clean.svg');
+fs.writeFileSync(scratchSvgPath, svgCode, 'utf8');
+
+const target1 = path.resolve(__dirname, 'upsunday-showcase', 'public', 'brand', 'as-monogram.svg');
+fs.writeFileSync(target1, svgCode, 'utf8');
+
+console.log('Brand SVG written successfully to:', scratchSvgPath, target1);

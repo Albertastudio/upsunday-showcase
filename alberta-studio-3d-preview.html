@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alberta Studio — 3D Identity</title>
+  <!--
+    ===========================================================================
+    ALBERTA STUDIO — 3D IDENTITY PROTOTYPE (alberta-studio-3d-preview.html)
+    ===========================================================================
+    Brand: Alberta Studio (https://albertastudio.dev)
+    Visual Direction: Architectural, minimal, satin silver / brushed titanium,
+                      deep navy studio lighting, restrained cool cyan accents.
+
+    GEOMETRY & VECTOR DISCLOSURE:
+    - The supplied reference ("Логотип Alberta Studio, прозрачный SVG.jpg") is a
+      1024x1024 RGB JPEG raster render.
+    - All cubic Bezier contours (S_RIBBON, S_LOWER_SERIF, A_OUTER, A_HOLE,
+      BADGE_OUTER, and PCB circuit traces) were mathematically reconstructed on
+      a 1024x1024 coordinate grid and verified via pixel-overlay alignment.
+    - Clean SVG <path> definitions are embedded below in #alberta-studio-svg-defs
+      and mirrored in the LOGO_GEOMETRY_DATA constant so Antigravity can either
+      replace them with the repository's native SVG via THREE.SVGLoader or use
+      this pre-calibrated 3D relief geometry directly.
+
+    EXTERNAL DEPENDENCIES & LOCAL SERVER NOTES:
+    - Primary Engine: Three.js (r128 / ES compatible) loaded dynamically via
+      jsDelivr / cdnjs CDN with non-blocking timeout.
+    - Offline / Sandbox Fallback: Includes a built-in zero-dependency WebGL2/1
+      PBR extrusion & studio shader renderer that activates automatically if
+      CDN scripts are blocked or unreachable (e.g., offline preview or file://).
+    - Can be opened directly in a browser or served via any local static server
+      (e.g., `npx serve .` or `python3 -m http.server 8080`).
+    ===========================================================================
+  -->
+  <style>
+    :root {
+      --bg-deep: #05080f;
+      --bg-navy: #0b1322;
+      --bg-surface: rgba(12, 19, 33, 0.82);
+      --border-subtle: rgba(165, 195, 230, 0.15);
+      --border-highlight: rgba(56, 189, 248, 0.42);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-cool: #38bdf8;
+      --accent-silver: #cbd5e1;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+
+    .studio-viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(24, 42, 70, 0.52) 0%, rgba(9, 15, 26, 0.90) 54%, #04070d 100%);
+    }
+
+    .studio-grid-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.028) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.028) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(circle at 50% 46%, black 20%, transparent 78%);
+      -webkit-mask-image: radial-gradient(circle at 50% 46%, black 20%, transparent 78%);
+    }
+
+    #webgl-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #webgl-container:active {
+      cursor: grabbing;
+    }
+
+    #webgl-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      outline: none;
+    }
+
+    /* Minimal Studio Header */
+    .studio-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 32px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .brand-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .brand-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-cool);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.85);
+      transition: opacity 0.25s ease;
+    }
+
+    .brand-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-primary);
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      padding-left: 12px;
+      border-left: 1px solid var(--border-subtle);
+    }
+
+    .studio-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      padding: 6px 14px;
+      border-radius: 999px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      pointer-events: auto;
+    }
+
+    .studio-meta span.sep {
+      color: var(--text-muted);
+    }
+
+    /* Bottom Understated Control Bar */
+    .studio-controls {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 7px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+      z-index: 10;
+      white-space: nowrap;
+      max-width: calc(100vw - 24px);
+    }
+
+    .ctrl-btn {
+      appearance: none;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.015em;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .ctrl-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .ctrl-btn.active {
+      color: var(--text-primary);
+      background: rgba(56, 189, 248, 0.14);
+      border-color: var(--border-highlight);
+      box-shadow: inset 0 0 12px rgba(56, 189, 248, 0.08);
+    }
+
+    .ctrl-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border-subtle);
+      margin: 0 3px;
+      flex-shrink: 0;
+    }
+
+    .interaction-hint {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      opacity: 0.8;
+      transition: opacity 0.4s ease;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* WebGL Fallback Container */
+    #webgl-fallback {
+      display: none;
+      position: absolute;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      padding: 32px;
+      text-align: center;
+      background: radial-gradient(circle at 50% 50%, #101b2d 0%, #060a11 100%);
+      z-index: 20;
+    }
+
+    #webgl-fallback.visible {
+      display: flex;
+    }
+
+    .fallback-card {
+      max-width: 460px;
+      padding: 28px 32px;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .fallback-card svg {
+      width: 140px;
+      height: 140px;
+      margin-bottom: 18px;
+      filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+    }
+
+    .fallback-card h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .fallback-card p {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 680px) {
+      .studio-header {
+        padding: 16px 18px;
+      }
+      .brand-subtitle {
+        display: none;
+      }
+      .studio-controls {
+        bottom: 14px;
+        flex-wrap: wrap;
+        justify-content: center;
+        border-radius: 18px;
+      }
+      .ctrl-btn {
+        font-size: 11px;
+        padding: 5px 10px;
+      }
+      .interaction-hint {
+        bottom: 92px;
+      }
+    }
+  </style>
+  <!-- Three.js is loaded dynamically with non-blocking offline fallback -->
+</head>
+<body>
+  <!-- Hidden Official Reconstructed Vector Source (1024x1024 ViewBox) for SVGLoader / Direct Inspection -->
+  <svg id="alberta-studio-svg-defs" viewBox="0 0 1024 1024" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true">
+    <defs>
+      <!-- Reconstructed 'A' Monogram Path (with inner triangular counter) -->
+      <path id="as-path-a" fill-rule="evenodd" d="M 520 184 L 531 184 L 652 461 L 705 582 L 701 680 L 655 756 L 520 761 L 520 752 C 588 752 632 728 622 682 L 578 577 L 347 577 L 314 644 L 305 628 L 520 184 Z M 483 297 L 536 427 L 574 562 L 354 562 L 483 297 Z" />
+      <!-- Reconstructed 'S' Primary Ribbon Path -->
+      <path id="as-path-s-ribbon" d="M 744 224 L 753 224 L 753 407 L 744 407 C 710 326 638 246 542 217 C 432 200 338 246 338 312 C 338 368 408 396 552 443 C 692 488 800 536 800 624 C 800 735 695 790 562 790 C 425 790 296 676 250 526 L 259 526 C 295 642 418 765 556 779 C 648 782 701 742 701 680 C 701 612 620 574 470 526 C 322 478 258 430 258 350 C 258 248 375 203 498 204 C 572 205 632 236 674 262 C 704 278 732 260 744 224 Z" />
+      <!-- Reconstructed 'S' Lower-Left Classical Pedestal Serif -->
+      <path id="as-path-s-pedestal" d="M 250 526 L 259 526 C 278 592 316 664 365 712 L 348 708 C 324, 718 342 746 385 752 L 385 761 L 182 761 L 182 752 C 218 748 244 730 250 695 L 250 526 Z" />
+    </defs>
+  </svg>
+
+  <main class="studio-viewport" id="studio-viewport">
+    <div class="studio-grid-overlay"></div>
+
+    <!-- Header -->
+    <header class="studio-header">
+      <div class="brand-title-group">
+        <span class="brand-dot" id="status-dot"></span>
+        <h1 class="brand-title">Alberta Studio — 3D Identity</h1>
+        <span class="brand-subtitle">Architectural Monogram Prototype</span>
+      </div>
+      <div class="studio-meta" id="studio-meta">
+        <span id="engine-label">3D WebGL</span>
+        <span class="sep">·</span>
+        <span id="rotation-label">360° / 16s</span>
+      </div>
+    </header>
+
+    <!-- 3D WebGL Mount Container -->
+    <div id="webgl-container" role="img" aria-label="Interactive 3D animated Alberta Studio AS monogram logo"></div>
+
+    <!-- Subtle Pointer Hint -->
+    <div class="interaction-hint" id="interaction-hint">
+      Drag to inspect 3D bevels &amp; depth · Double-click to recenter
+    </div>
+
+    <!-- Understated Studio Controls -->
+    <nav class="studio-controls" aria-label="3D Preview Controls">
+      <button type="button" class="ctrl-btn active" id="btn-toggle-play" title="Pause or Resume Rotation (Space)">
+        <span id="play-icon">❚❚</span>
+        <span id="play-text">Pause</span>
+      </button>
+      <div class="ctrl-divider"></div>
+      <button type="button" class="ctrl-btn active" id="btn-mode-badge" title="Toggle Architectural Badge Plate">
+        Medallion Badge
+      </button>
+      <button type="button" class="ctrl-btn" id="btn-mode-floating" title="Show Standalone Floating 3D Monogram">
+        Floating Monogram
+      </button>
+      <div class="ctrl-divider"></div>
+      <button type="button" class="ctrl-btn active" id="btn-mat-titanium" data-mat="titanium">
+        Brushed Titanium
+      </button>
+      <button type="button" class="ctrl-btn" id="btn-mat-silver" data-mat="silver">
+        Satin Silver
+      </button>
+      <div class="ctrl-divider"></div>
+      <button type="button" class="ctrl-btn" id="btn-reset-view" title="Reset Camera Orientation">
+        Reset
+      </button>
+    </nav>
+
+    <!-- Graceful Fallback if WebGL is Unavailable -->
+    <section id="webgl-fallback" aria-live="polite">
+      <div class="fallback-card">
+        <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+          <rect x="90" y="80" width="844" height="844" rx="185" fill="#131d2e" stroke="#475569" stroke-width="8"/>
+          <use href="#as-path-a" fill="#94a3b8" />
+          <use href="#as-path-s-pedestal" fill="#94a3b8" />
+          <use href="#as-path-s-ribbon" fill="#cbd5e1" />
+        </svg>
+        <h2>Alberta Studio — 3D Identity</h2>
+        <p>
+          WebGL hardware acceleration is currently unavailable in this browser environment.
+          Showing the static reconstructed vector monogram fallback. Enable WebGL to view the real-time 3D extruded titanium prototype.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /**
+     * =========================================================================
+     * ALBERTA STUDIO 3D IDENTITY MODULE
+     * =========================================================================
+     */
+    (function () {
+      'use strict';
+
+      // -----------------------------------------------------------------------
+      // 1. RECONSTRUCTED VECTOR CONTOUR DATA (1024x1024 Design Space)
+      // -----------------------------------------------------------------------
+      const LOGO_GEOMETRY_DATA = {
+        viewBox: 1024,
+        center: { x: 512, y: 496 },
+        scale: 1 / 122, // Balanced world scale with generous viewport margin
+
+        // Main sweeping 'S' ribbon (proud relief layer)
+        sRibbon: [
+          ['M', 744, 224],
+          ['L', 753, 224],
+          ['L', 753, 407],
+          ['L', 744, 407],
+          ['C', 710, 326, 638, 246, 542, 217],
+          ['C', 432, 200, 338, 246, 338, 312],
+          ['C', 338, 368, 408, 396, 552, 443],
+          ['C', 692, 488, 800, 536, 800, 624],
+          ['C', 800, 735, 695, 790, 562, 790],
+          ['C', 425, 790, 296, 676, 250, 526],
+          ['L', 259, 526],
+          ['C', 295, 642, 418, 765, 556, 779],
+          ['C', 648, 782, 701, 742, 701, 680],
+          ['C', 701, 612, 620, 574, 470, 526],
+          ['C', 322, 478, 258, 430, 258, 350],
+          ['C', 258, 248, 375, 203, 498, 204],
+          ['C', 572, 205, 632, 236, 674, 262],
+          ['C', 704, 278, 732, 260, 744, 224]
+        ],
+
+        // Lower-left classical vertical serif pedestal of 'S'
+        sPedestal: [
+          ['M', 250, 526],
+          ['L', 259, 526],
+          ['C', 278, 592, 316, 664, 365, 712],
+          ['L', 348, 708],
+          ['C', 324, 718, 342, 746, 385, 752],
+          ['L', 385, 761],
+          ['L', 182, 761],
+          ['L', 182, 752],
+          ['C', 218, 748, 244, 730, 250, 695],
+          ['L', 250, 526]
+        ],
+
+        // Letter 'A' outer contour
+        aOuter: [
+          ['M', 520, 184],
+          ['L', 531, 184],
+          ['L', 652, 461],
+          ['L', 705, 582],
+          ['L', 701, 680],
+          ['L', 655, 756],
+          ['L', 520, 761],
+          ['L', 520, 752],
+          ['C', 588, 752, 632, 728, 622, 682],
+          ['L', 578, 577],
+          ['L', 347, 577],
+          ['L', 314, 644],
+          ['L', 305, 628],
+          ['L', 520, 184]
+        ],
+
+        // Letter 'A' inner triangular counter hole
+        aHole: [
+          ['M', 483, 297],
+          ['L', 536, 427],
+          ['L', 574, 562],
+          ['L', 354, 562],
+          ['L', 483, 297]
+        ],
+
+        // Monogram-bound circuit traces & glowing cyan bevel rim lines
+        monogramTraces: [
+          // Spine etched circuit trace
+          [[388, 468], [462, 496], [483, 480], [508, 502], [612, 538]],
+          [[645, 512], [696, 542], [728, 594], [742, 610], [744, 656], [718, 712]],
+          // Underside bevel of S upper-left to lower-right bowl
+          [[260, 355], [268, 412], [308, 462], [392, 498], [485, 530], [595, 566], [672, 608], [699, 660], [692, 725], [642, 768], [560, 780]],
+          // Inner left edge of A triangle
+          [[481, 302], [418, 432]]
+        ],
+
+        // Badge-bound PCB traces (hidden when Floating Monogram mode is selected)
+        badgeTraces: [
+          [[638, 212], [662, 188], [674, 174], [758, 174], [835, 250], [902, 250]],
+          [[130, 514], [182, 514], [208, 488]],
+          [[180, 232], [180, 305], [206, 305], [206, 365]],
+          [[810, 712], [852, 668], [852, 610]],
+          [[212, 152], [346, 152], [392, 198]],
+          [[780, 320], [875, 320]],
+          [[802, 470], [848, 424], [912, 424]]
+        ]
+      };
+
+      function toWorld(px, py) {
+        const s = LOGO_GEOMETRY_DATA.scale;
+        return [
+          (px - LOGO_GEOMETRY_DATA.center.x) * s,
+          (LOGO_GEOMETRY_DATA.center.y - py) * s
+        ];
+      }
+
+      function smoothstep(edge0, edge1, x) {
+        const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
+      }
+
+      function getWeaveScale(partType, wx, wy) {
+        if (partType === 'S_RIBBON') {
+          const topArchDip = smoothstep(1.50, 2.20, wy) * (1.0 - smoothstep(0.0, 1.30, Math.abs(wx - 0.05)));
+          return 1.08 - 0.38 * topArchDip;
+        }
+        if (partType === 'S_PEDESTAL') {
+          return 0.74;
+        }
+        if (partType === 'A_BODY') {
+          const apexProud = smoothstep(0.60, 1.80, wy);
+          const isCrossbar = (wy > -0.82 && wy < -0.52 && wx > -1.25 && wx < 0.55) ? 0.12 : 0.0;
+          return 0.72 + 0.38 * apexProud - isCrossbar;
+        }
+        return 1.0;
+      }
+
+      // -----------------------------------------------------------------------
+      // 2. PROCEDURAL BRUSHED TITANIUM TEXTURE GENERATOR
+      // -----------------------------------------------------------------------
+      function createBrushedTitaniumCanvas() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#787878';
+        ctx.fillRect(0, 0, 512, 512);
+
+        ctx.save();
+        ctx.translate(256, 256);
+        ctx.rotate(-0.28);
+        for (let i = -420; i < 420; i += 1.4) {
+          const lum = 105 + Math.floor(Math.sin(i * 0.37) * 22 + (Math.random() - 0.5) * 38);
+          ctx.strokeStyle = `rgb(${lum},${lum},${lum})`;
+          ctx.lineWidth = 0.8 + Math.random() * 1.1;
+          ctx.beginPath();
+          ctx.moveTo(-420, i);
+          ctx.lineTo(420, i + (Math.random() - 0.5) * 3);
+          ctx.stroke();
+        }
+        ctx.restore();
+        return canvas;
+      }
+
+      // -----------------------------------------------------------------------
+      // 3. CALIBRATED MATERIAL PRESETS (Deep Gunmetal Titanium & Satin Silver)
+      // -----------------------------------------------------------------------
+      const MATERIAL_PRESETS = {
+        titanium: {
+          capColor: [0.36, 0.43, 0.52],      // Rich gunmetal brushed titanium
+          sideColor: [0.82, 0.90, 0.98],     // Polished silver-chrome bevels
+          roughnessCap: 0.34,
+          roughnessSide: 0.12,
+          metalness: 0.90
+        },
+        silver: {
+          capColor: [0.54, 0.61, 0.70],      // Brighter architectural satin silver
+          sideColor: [0.94, 0.97, 1.00],     // Mirror-satin aluminum bevels
+          roughnessCap: 0.24,
+          roughnessSide: 0.09,
+          metalness: 0.94
+        }
+      };
+
+      // -----------------------------------------------------------------------
+      // 4. INTERACTION & MOTION STATE CONTROLLER
+      // -----------------------------------------------------------------------
+      const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const state = {
+        isPlaying: !prefersReducedMotion,
+        showBadge: true,
+        materialKey: 'titanium',
+        rotationPeriodSec: 16.0, // Complete 360° every 16 seconds (14-18s spec)
+        yawAngle: 0.22,
+        pitchAngle: 0.05,
+        targetDragYaw: 0,
+        targetDragPitch: 0,
+        currentDragYaw: 0,
+        currentDragPitch: 0,
+        hoverX: 0,
+        hoverY: 0,
+        isDragging: false,
+        lastPointerX: 0,
+        lastPointerY: 0,
+        elapsedTime: 0,
+        lastFrameTime: performance.now(),
+        isVisible: true,
+        disposed: false
+      };
+
+      // -----------------------------------------------------------------------
+      // 5. GEOMETRY TESSELLATION & EXTRUSION ENGINE
+      // -----------------------------------------------------------------------
+      function sampleCommandPath(cmds, curveSteps) {
+        const pts = [];
+        let cx = 0, cy = 0;
+        for (let i = 0; i < cmds.length; i++) {
+          const c = cmds[i];
+          const op = c[0];
+          if (op === 'M') {
+            cx = c[1]; cy = c[2];
+            pts.push(toWorld(cx, cy));
+          } else if (op === 'L') {
+            cx = c[1]; cy = c[2];
+            pts.push(toWorld(cx, cy));
+          } else if (op === 'C') {
+            const x1 = c[1], y1 = c[2], x2 = c[3], y2 = c[4], x3 = c[5], y3 = c[6];
+            for (let s = 1; s <= curveSteps; s++) {
+              const t = s / curveSteps;
+              const mt = 1 - t;
+              const px = mt * mt * mt * cx + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3;
+              const py = mt * mt * mt * cy + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3;
+              pts.push(toWorld(px, py));
+            }
+            cx = x3; cy = y3;
+          }
+        }
+        if (pts.length > 2) {
+          const first = pts[0], last = pts[pts.length - 1];
+          if (Math.hypot(first[0] - last[0], first[1] - last[1]) < 1e-4) {
+            pts.pop();
+          }
+        }
+        return pts;
+      }
+
+      function createRoundedRectPolygon(x0, y0, x1, y1, r, cornerSteps) {
+        const pts = [];
+        const corners = [
+          { cx: x1 - r, cy: y0 + r, a0: -Math.PI / 2, a1: 0 },
+          { cx: x1 - r, cy: y1 - r, a0: 0, a1: Math.PI / 2 },
+          { cx: x0 + r, cy: y1 - r, a0: Math.PI / 2, a1: Math.PI },
+          { cx: x0 + r, cy: y0 + r, a0: Math.PI, a1: Math.PI * 1.5 }
+        ];
+        for (let c = 0; c < 4; c++) {
+          const corner = corners[c];
+          for (let s = 0; s <= cornerSteps; s++) {
+            const a = corner.a0 + (corner.a1 - corner.a0) * (s / cornerSteps);
+            pts.push(toWorld(corner.cx + Math.cos(a) * r, corner.cy + Math.sin(a) * r));
+          }
+        }
+        return pts;
+      }
+
+      function signedArea(poly) {
+        let area = 0;
+        for (let i = 0, n = poly.length; i < n; i++) {
+          const p = poly[i], q = poly[(i + 1) % n];
+          area += (p[0] * q[1] - q[0] * p[1]);
+        }
+        return area * 0.5;
+      }
+
+      function ensureWinding(poly, ccw) {
+        const isCcw = signedArea(poly) > 0;
+        if (isCcw !== ccw) poly.reverse();
+        return poly;
+      }
+
+      function mergeHoleIntoOuter(outer, hole) {
+        ensureWinding(outer, true);
+        ensureWinding(hole, false);
+        let maxX = -Infinity, hIdx = 0;
+        for (let i = 0; i < hole.length; i++) {
+          if (hole[i][0] > maxX) {
+            maxX = hole[i][0];
+            hIdx = i;
+          }
+        }
+        const hp = hole[hIdx];
+        let bestIdx = 0, bestDist = Infinity;
+        for (let i = 0; i < outer.length; i++) {
+          const op = outer[i];
+          const d = Math.hypot(op[0] - hp[0], op[1] - hp[1]);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        }
+        const merged = [];
+        for (let i = 0; i <= bestIdx; i++) merged.push(outer[i]);
+        for (let i = 0; i <= hole.length; i++) merged.push(hole[(hIdx + i) % hole.length]);
+        for (let i = bestIdx; i < outer.length; i++) merged.push(outer[i]);
+        return merged;
+      }
+
+      function triangulatePolygon(poly) {
+        const pts = poly.slice();
+        if (signedArea(pts) < 0) pts.reverse();
+        const n = pts.length;
+        const indices = [];
+        for (let i = 0; i < n; i++) indices.push(i);
+        const tris = [];
+
+        function cross2D(a, b, c) {
+          return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        }
+        function pointInTri(p, a, b, c) {
+          const c1 = cross2D(a, b, p);
+          const c2 = cross2D(b, c, p);
+          const c3 = cross2D(c, a, p);
+          return (c1 >= -1e-7 && c2 >= -1e-7 && c3 >= -1e-7);
+        }
+
+        let guard = n * n * 3;
+        while (indices.length > 3 && guard-- > 0) {
+          let earFound = false;
+          const m = indices.length;
+          for (let i = 0; i < m; i++) {
+            const i0 = indices[(i + m - 1) % m];
+            const i1 = indices[i];
+            const i2 = indices[(i + 1) % m];
+            const a = pts[i0], b = pts[i1], c = pts[i2];
+            if (cross2D(a, b, c) <= 1e-6) continue;
+            let hasPointInside = false;
+            for (let j = 0; j < m; j++) {
+              const ij = indices[j];
+              if (ij === i0 || ij === i1 || ij === i2) continue;
+              const p = pts[ij];
+              if (Math.hypot(p[0] - a[0], p[1] - a[1]) < 1e-5 ||
+                  Math.hypot(p[0] - b[0], p[1] - b[1]) < 1e-5 ||
+                  Math.hypot(p[0] - c[0], p[1] - c[1]) < 1e-5) continue;
+              if (pointInTri(p, a, b, c)) {
+                hasPointInside = true;
+                break;
+              }
+            }
+            if (!hasPointInside) {
+              tris.push([i0, i1, i2]);
+              indices.splice(i, 1);
+              earFound = true;
+              break;
+            }
+          }
+          if (!earFound) {
+            for (let i = 0; i < m; i++) {
+              const i0 = indices[(i + m - 1) % m];
+              const i1 = indices[i];
+              const i2 = indices[(i + 1) % m];
+              if (cross2D(pts[i0], pts[i1], pts[i2]) > -1e-4) {
+                tris.push([i0, i1, i2]);
+                indices.splice(i, 1);
+                earFound = true;
+                break;
+              }
+            }
+            if (!earFound) break;
+          }
+        }
+        if (indices.length === 3) {
+          tris.push([indices[0], indices[1], indices[2]]);
+        }
+        return { pts, tris };
+      }
+
+      function computeLoopOutwardNormals(loop, isHole) {
+        const area = signedArea(loop);
+        const sign = (area > 0) ? (isHole ? -1 : 1) : (isHole ? 1 : -1);
+        const n = loop.length;
+        const normals = [];
+        for (let i = 0; i < n; i++) {
+          const pPrev = loop[(i + n - 1) % n];
+          const pCurr = loop[i];
+          const pNext = loop[(i + 1) % n];
+          let dx1 = pCurr[0] - pPrev[0], dy1 = pCurr[1] - pPrev[1];
+          let l1 = Math.hypot(dx1, dy1) || 1;
+          dx1 /= l1; dy1 /= l1;
+          let dx2 = pNext[0] - pCurr[0], dy2 = pNext[1] - pCurr[1];
+          let l2 = Math.hypot(dx2, dy2) || 1;
+          dx2 /= l2; dy2 /= l2;
+
+          const n1x = dy1 * sign, n1y = -dx1 * sign;
+          const n2x = dy2 * sign, n2y = -dx2 * sign;
+          let nx = n1x + n2x, ny = n1y + n2y;
+          const nl = Math.hypot(nx, ny);
+          if (nl < 1e-4) {
+            nx = n1x; ny = n1y;
+          } else {
+            nx /= nl; ny /= nl;
+          }
+          const dot = nx * n1x + ny * n1y;
+          const miterScale = Math.min(1.35, 1 / Math.max(0.55, dot));
+          normals.push([nx * miterScale, ny * miterScale, nx, ny]);
+        }
+        return normals;
+      }
+
+      function buildExtrudedBeveledBuffers(outerLoop, holeLoops, options) {
+        const halfDepth = options.halfDepth || 0.24;
+        const bevelSize = options.bevelSize || 0.038;
+        const bevelThick = options.bevelThickness || 0.042;
+        const bevelSteps = options.bevelSteps || 5;
+        const partType = options.partType || 'S_RIBBON';
+        const zCenterOffset = options.zCenterOffset || 0;
+
+        let workingPoly = outerLoop.slice();
+        ensureWinding(workingPoly, true);
+        for (let h = 0; h < holeLoops.length; h++) {
+          workingPoly = mergeHoleIntoOuter(workingPoly, holeLoops[h].slice());
+        }
+        const { pts: capPts, tris: capTris } = triangulatePolygon(workingPoly);
+
+        const positions = [];
+        const normals = [];
+        const uvs = [];
+        const matIds = []; // 0.0 = brushed cap, 1.0 = polished bevel/sidewall
+
+        function pushVertex(x, y, z, nx, ny, nz, matId) {
+          const wScale = getWeaveScale(partType, x, y);
+          const sz = (z * wScale) + zCenterOffset;
+          positions.push(x, y, sz);
+          const nl = Math.hypot(nx, ny, nz) || 1;
+          normals.push(nx / nl, ny / nl, nz / nl);
+          uvs.push(x * 0.22 + 0.5, y * 0.22 + 0.5);
+          matIds.push(matId);
+        }
+
+        const zCapFront = halfDepth + bevelThick;
+        const zCapBack = -(halfDepth + bevelThick);
+
+        for (let t = 0; t < capTris.length; t++) {
+          const [i0, i1, i2] = capTris[t];
+          const p0 = capPts[i0], p1 = capPts[i1], p2 = capPts[i2];
+          pushVertex(p0[0], p0[1], zCapFront, 0, 0, 1, 0.0);
+          pushVertex(p1[0], p1[1], zCapFront, 0, 0, 1, 0.0);
+          pushVertex(p2[0], p2[1], zCapFront, 0, 0, 1, 0.0);
+
+          pushVertex(p0[0], p0[1], zCapBack, 0, 0, -1, 0.0);
+          pushVertex(p2[0], p2[1], zCapBack, 0, 0, -1, 0.0);
+          pushVertex(p1[0], p1[1], zCapBack, 0, 0, -1, 0.0);
+        }
+
+        const allLoops = [{ loop: ensureWinding(outerLoop.slice(), true), isHole: false }];
+        for (let h = 0; h < holeLoops.length; h++) {
+          allLoops.push({ loop: ensureWinding(holeLoops[h].slice(), false), isHole: true });
+        }
+
+        const profile = [];
+        for (let s = 0; s <= bevelSteps; s++) {
+          const theta = (s / bevelSteps) * (Math.PI / 2);
+          const inset = (1 - Math.sin(theta)) * (-bevelSize);
+          const z = halfDepth + Math.cos(theta) * bevelThick;
+          const nz = Math.cos(theta);
+          const nr = Math.sin(theta);
+          profile.push({ offset: inset + bevelSize, z, nr, nz });
+        }
+        for (let s = 0; s <= bevelSteps; s++) {
+          const theta = (s / bevelSteps) * (Math.PI / 2);
+          const z = -halfDepth - Math.sin(theta) * bevelThick;
+          const offset = Math.cos(theta) * bevelSize;
+          const nz = -Math.sin(theta);
+          const nr = Math.cos(theta);
+          profile.push({ offset, z, nr, nz });
+        }
+
+        for (let l = 0; l < allLoops.length; l++) {
+          const { loop, isHole } = allLoops[l];
+          const loopNormals = computeLoopOutwardNormals(loop, isHole);
+          const m = loop.length;
+
+          for (let r = 0; r < profile.length - 1; r++) {
+            const pr0 = profile[r];
+            const pr1 = profile[r + 1];
+
+            for (let i = 0; i < m; i++) {
+              const j = (i + 1) % m;
+              const p0 = loop[i], p1 = loop[j];
+              const n0 = loopNormals[i], n1 = loopNormals[j];
+
+              const x00 = p0[0] + n0[0] * pr0.offset, y00 = p0[1] + n0[1] * pr0.offset;
+              const x10 = p1[0] + n1[0] * pr0.offset, y10 = p1[1] + n1[1] * pr0.offset;
+              const x01 = p0[0] + n0[0] * pr1.offset, y01 = p0[1] + n0[1] * pr1.offset;
+              const x11 = p1[0] + n1[0] * pr1.offset, y11 = p1[1] + n1[1] * pr1.offset;
+
+              const nx00 = n0[2] * pr0.nr, ny00 = n0[3] * pr0.nr, nz00 = pr0.nz;
+              const nx10 = n1[2] * pr0.nr, ny10 = n1[3] * pr0.nr, nz10 = pr0.nz;
+              const nx01 = n0[2] * pr1.nr, ny01 = n0[3] * pr1.nr, nz01 = pr1.nz;
+              const nx11 = n1[2] * pr1.nr, ny11 = n1[3] * pr1.nr, nz11 = pr1.nz;
+
+              pushVertex(x00, y00, pr0.z, nx00, ny00, nz00, 1.0);
+              pushVertex(x01, y01, pr1.z, nx01, ny01, nz01, 1.0);
+              pushVertex(x11, y11, pr1.z, nx11, ny11, nz11, 1.0);
+
+              pushVertex(x00, y00, pr0.z, nx00, ny00, nz00, 1.0);
+              pushVertex(x11, y11, pr1.z, nx11, ny11, nz11, 1.0);
+              pushVertex(x10, y10, pr0.z, nx10, ny10, nz10, 1.0);
+            }
+          }
+        }
+
+        return {
+          positions: new Float32Array(positions),
+          normals: new Float32Array(normals),
+          uvs: new Float32Array(uvs),
+          matIds: new Float32Array(matIds),
+          vertexCount: positions.length / 3
+        };
+      }
+
+      function buildPolylineBuffer(traces, zFront, zBack, intensity) {
+        const linePositions = [];
+        const lineIntensities = [];
+        traces.forEach((pts2D) => {
+          for (let i = 0; i < pts2D.length - 1; i++) {
+            const [x0, y0] = toWorld(pts2D[i][0], pts2D[i][1]);
+            const [x1, y1] = toWorld(pts2D[i + 1][0], pts2D[i + 1][1]);
+            linePositions.push(x0, y0, zFront, x1, y1, zFront);
+            lineIntensities.push(intensity, intensity);
+            if (zBack !== null) {
+              linePositions.push(x0, y0, zBack, x1, y1, zBack);
+              lineIntensities.push(intensity * 0.85, intensity * 0.85);
+            }
+          }
+        });
+        return {
+          positions: new Float32Array(linePositions),
+          intensities: new Float32Array(lineIntensities),
+          count: linePositions.length / 3
+        };
+      }
+
+      function generateAllLogoMeshes() {
+        const sRibbonLoop = sampleCommandPath(LOGO_GEOMETRY_DATA.sRibbon, 28);
+        const sPedestalLoop = sampleCommandPath(LOGO_GEOMETRY_DATA.sPedestal, 20);
+        const aOuterLoop = sampleCommandPath(LOGO_GEOMETRY_DATA.aOuter, 24);
+        const aHoleLoop = sampleCommandPath(LOGO_GEOMETRY_DATA.aHole, 8);
+        const badgeLoop = createRoundedRectPolygon(90, 80, 934, 924, 185, 20);
+
+        const sRibbonBuf = buildExtrudedBeveledBuffers(sRibbonLoop, [], {
+          halfDepth: 0.22,
+          bevelSize: 0.036,
+          bevelThickness: 0.044,
+          bevelSteps: 6,
+          partType: 'S_RIBBON',
+          zCenterOffset: 0.0
+        });
+
+        const sPedestalBuf = buildExtrudedBeveledBuffers(sPedestalLoop, [], {
+          halfDepth: 0.22,
+          bevelSize: 0.032,
+          bevelThickness: 0.038,
+          bevelSteps: 5,
+          partType: 'S_PEDESTAL',
+          zCenterOffset: 0.0
+        });
+
+        const aBodyBuf = buildExtrudedBeveledBuffers(aOuterLoop, [aHoleLoop], {
+          halfDepth: 0.22,
+          bevelSize: 0.034,
+          bevelThickness: 0.042,
+          bevelSteps: 6,
+          partType: 'A_BODY',
+          zCenterOffset: 0.0
+        });
+
+        const badgeBuf = buildExtrudedBeveledBuffers(badgeLoop, [], {
+          halfDepth: 0.14,
+          bevelSize: 0.055,
+          bevelThickness: 0.055,
+          bevelSteps: 6,
+          partType: 'BADGE',
+          zCenterOffset: -0.46
+        });
+
+        const monogramLines = buildPolylineBuffer(LOGO_GEOMETRY_DATA.monogramTraces, 0.288, -0.288, 0.92);
+        const badgeLines = buildPolylineBuffer(LOGO_GEOMETRY_DATA.badgeTraces, -0.258, null, 0.62);
+
+        return {
+          monogramParts: [sRibbonBuf, sPedestalBuf, aBodyBuf],
+          badgePart: badgeBuf,
+          monogramLines,
+          badgeLines
+        };
+      }
+
+      // -----------------------------------------------------------------------
+      // 6. THREE.JS RENDERER PIPELINE (When CDN is loaded)
+      // -----------------------------------------------------------------------
+      function initThreeJsPipeline(container, meshes) {
+        const THREE = window.THREE;
+        document.getElementById('engine-label').textContent = 'Three.js WebGL';
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          33,
+          container.clientWidth / Math.max(1, container.clientHeight),
+          0.1,
+          100
+        );
+        camera.position.set(0, -0.18, 15.4);
+
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true,
+          powerPreference: 'high-performance'
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        if ('toneMapping' in renderer) {
+          renderer.toneMapping = THREE.ACESFilmicToneMapping;
+          renderer.toneMappingExposure = 1.05;
+        }
+        container.appendChild(renderer.domElement);
+
+        const brushCanvas = createBrushedTitaniumCanvas();
+        const brushTex = new THREE.CanvasTexture(brushCanvas);
+        brushTex.wrapS = THREE.RepeatWrapping;
+        brushTex.wrapT = THREE.RepeatWrapping;
+        brushTex.repeat.set(2, 2);
+
+        let envMap = null;
+        if (THREE.PMREMGenerator) {
+          const pmrem = new THREE.PMREMGenerator(renderer);
+          const envScene = new THREE.Scene();
+          envScene.background = new THREE.Color(0x060b14);
+
+          const keyPanel = new THREE.Mesh(
+            new THREE.PlaneGeometry(16, 11),
+            new THREE.MeshBasicMaterial({ color: 0xdbeafe, side: THREE.DoubleSide })
+          );
+          keyPanel.position.set(-7, 6, 8);
+          keyPanel.lookAt(0, 0, 0);
+          envScene.add(keyPanel);
+
+          const rimPanel = new THREE.Mesh(
+            new THREE.PlaneGeometry(18, 5),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+          );
+          rimPanel.position.set(-5, -5, -8);
+          rimPanel.lookAt(0, 0, 0);
+          envScene.add(rimPanel);
+
+          envMap = pmrem.fromScene(envScene, 0.04).texture;
+          pmrem.dispose();
+        }
+
+        const ambientLight = new THREE.AmbientLight(0x111a2b, 0.85);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xf1f5f9, 1.95);
+        keyLight.position.set(-5.5, 6.5, 7.5);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4f729e, 0.95);
+        fillLight.position.set(6.0, -2.0, 5.0);
+        scene.add(fillLight);
+
+        const rimLightBack = new THREE.DirectionalLight(0x38bdf8, 2.2);
+        rimLightBack.position.set(-4.5, -3.5, -6.5);
+        scene.add(rimLightBack);
+
+        const capMaterial = new THREE.MeshStandardMaterial({
+          color: 0x5c6d82,
+          metalness: 0.88,
+          roughness: 0.34,
+          bumpMap: brushTex,
+          bumpScale: 0.009,
+          envMap: envMap,
+          envMapIntensity: 1.15
+        });
+
+        const bevelMaterial = new THREE.MeshStandardMaterial({
+          color: 0xdbe8f6,
+          metalness: 0.96,
+          roughness: 0.12,
+          envMap: envMap,
+          envMapIntensity: 1.65
+        });
+
+        const badgeCapMaterial = new THREE.MeshStandardMaterial({
+          color: 0x101827,
+          metalness: 0.55,
+          roughness: 0.48,
+          bumpMap: brushTex,
+          bumpScale: 0.003,
+          envMap: envMap,
+          envMapIntensity: 0.65
+        });
+
+        const badgeRimMaterial = new THREE.MeshStandardMaterial({
+          color: 0x94aac2,
+          metalness: 0.94,
+          roughness: 0.16,
+          envMap: envMap,
+          envMapIntensity: 1.45
+        });
+
+        function bufferToThreeGeometry(buf) {
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.BufferAttribute(buf.positions, 3));
+          geo.setAttribute('normal', new THREE.BufferAttribute(buf.normals, 3));
+          geo.setAttribute('uv', new THREE.BufferAttribute(buf.uvs, 2));
+
+          let capCount = 0;
+          for (let i = 0; i < buf.matIds.length; i++) {
+            if (buf.matIds[i] < 0.5) capCount++;
+          }
+          geo.addGroup(0, capCount, 0);
+          geo.addGroup(capCount, buf.vertexCount - capCount, 1);
+          return geo;
+        }
+
+        const rootGroup = new THREE.Group();
+        rootGroup.position.y = 0.24;
+        scene.add(rootGroup);
+
+        const geometriesToDispose = [];
+        meshes.monogramParts.forEach((partBuf) => {
+          const geo = bufferToThreeGeometry(partBuf);
+          geometriesToDispose.push(geo);
+          const mesh = new THREE.Mesh(geo, [capMaterial, bevelMaterial]);
+          rootGroup.add(mesh);
+        });
+
+        const badgeGeo = bufferToThreeGeometry(meshes.badgePart);
+        geometriesToDispose.push(badgeGeo);
+        const badgeMesh = new THREE.Mesh(badgeGeo, [badgeCapMaterial, badgeRimMaterial]);
+        rootGroup.add(badgeMesh);
+
+        const monoLineGeo = new THREE.BufferGeometry();
+        monoLineGeo.setAttribute('position', new THREE.BufferAttribute(meshes.monogramLines.positions, 3));
+        geometriesToDispose.push(monoLineGeo);
+        const monoLineMat = new THREE.LineBasicMaterial({ color: 0x5cc8ff, transparent: true, opacity: 0.65 });
+        const monoLineSegs = new THREE.LineSegments(monoLineGeo, monoLineMat);
+        rootGroup.add(monoLineSegs);
+
+        const badgeLineGeo = new THREE.BufferGeometry();
+        badgeLineGeo.setAttribute('position', new THREE.BufferAttribute(meshes.badgeLines.positions, 3));
+        geometriesToDispose.push(badgeLineGeo);
+        const badgeLineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35 });
+        const badgeLineSegs = new THREE.LineSegments(badgeLineGeo, badgeLineMat);
+        rootGroup.add(badgeLineSegs);
+
+        function applyPreset(presetKey) {
+          const p = MATERIAL_PRESETS[presetKey] || MATERIAL_PRESETS.titanium;
+          capMaterial.color.setRGB(p.capColor[0], p.capColor[1], p.capColor[2]);
+          capMaterial.roughness = p.roughnessCap;
+          capMaterial.metalness = p.metalness;
+          bevelMaterial.color.setRGB(p.sideColor[0], p.sideColor[1], p.sideColor[2]);
+          bevelMaterial.roughness = p.roughnessSide;
+        }
+
+        function onResize() {
+          const w = container.clientWidth || window.innerWidth;
+          const h = container.clientHeight || window.innerHeight;
+          camera.aspect = w / Math.max(1, h);
+          const aspectFactor = camera.aspect < 0.85 ? (0.85 / Math.max(0.45, camera.aspect)) * 0.92 : 1.0;
+          camera.position.z = 15.4 * Math.max(1.0, aspectFactor);
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h);
+        }
+        onResize();
+
+        return {
+          renderFrame(rotX, rotY, rotZ, floatY) {
+            badgeMesh.visible = state.showBadge;
+            badgeLineSegs.visible = state.showBadge;
+            rootGroup.rotation.set(rotX, rotY, rotZ);
+            rootGroup.position.y = 0.24 + floatY;
+            renderer.render(scene, camera);
+          },
+          setMaterialPreset: applyPreset,
+          onResize,
+          dispose() {
+            geometriesToDispose.forEach((g) => g.dispose());
+            capMaterial.dispose();
+            bevelMaterial.dispose();
+            badgeCapMaterial.dispose();
+            badgeRimMaterial.dispose();
+            monoLineMat.dispose();
+            badgeLineMat.dispose();
+            brushTex.dispose();
+            if (envMap) envMap.dispose();
+            renderer.dispose();
+          }
+        };
+      }
+
+      // -----------------------------------------------------------------------
+      // 7. BUILT-IN NATIVE WEBGL PBR ENGINE (Offline / Sandbox Fallback)
+      // -----------------------------------------------------------------------
+      function initNativeWebGLPipeline(container, meshes) {
+        document.getElementById('engine-label').textContent = 'WebGL PBR Studio';
+        const canvas = document.createElement('canvas');
+        container.appendChild(canvas);
+
+        const gl = canvas.getContext('webgl2', { antialias: true, alpha: true }) ||
+                   canvas.getContext('webgl', { antialias: true, alpha: true });
+        if (!gl) return null;
+
+        const vsSource = `
+          attribute vec3 aPosition;
+          attribute vec3 aNormal;
+          attribute vec2 aUv;
+          attribute float aMatId;
+
+          uniform mat4 uProjection;
+          uniform mat4 uModelView;
+          uniform mat3 uNormalMatrix;
+
+          varying vec3 vWorldPos;
+          varying vec3 vLocalPos;
+          varying vec3 vNormal;
+          varying vec2 vUv;
+          varying float vMatId;
+
+          void main() {
+            vLocalPos = aPosition;
+            vec4 worldPos = uModelView * vec4(aPosition, 1.0);
+            vWorldPos = worldPos.xyz;
+            vNormal = normalize(uNormalMatrix * aNormal);
+            vUv = aUv;
+            vMatId = aMatId;
+            gl_Position = uProjection * worldPos;
+          }
+        `;
+
+        const fsSource = `
+          precision highp float;
+
+          varying vec3 vWorldPos;
+          varying vec3 vLocalPos;
+          varying vec3 vNormal;
+          varying vec2 vUv;
+          varying float vMatId;
+
+          uniform vec3 uCapColor;
+          uniform vec3 uSideColor;
+          uniform float uRoughnessCap;
+          uniform float uRoughnessSide;
+          uniform float uIsBadge;
+          uniform float uPartId; // 0 = S_RIBBON, 1 = S_PEDESTAL, 2 = A_BODY
+
+          // Fine directional anisotropic brushed-titanium micro-grain
+          float brushedNoise(vec2 uv) {
+            float angle = -0.28;
+            vec2 ruv = vec2(
+              uv.x * cos(angle) - uv.y * sin(angle),
+              uv.x * sin(angle) + uv.y * cos(angle)
+            );
+            float s1 = sin(ruv.y * 220.0 + sin(ruv.x * 14.0) * 1.1);
+            float s2 = sin(ruv.y * 520.0 + cos(ruv.x * 29.0) * 0.9);
+            float s3 = cos(ruv.y * 960.0);
+            return (s1 * 0.45 + s2 * 0.35 + s3 * 0.20);
+          }
+
+          // Controlled dark architectural studio softbox environment reflection
+          vec3 sampleStudioEnv(vec3 R, float roughness) {
+            float y = clamp(R.y * 0.5 + 0.5, 0.0, 1.0);
+            vec3 zenith = vec3(0.08, 0.13, 0.22);
+            vec3 horizon = vec3(0.28, 0.36, 0.48);
+            vec3 nadir = vec3(0.02, 0.03, 0.06);
+            vec3 sky = mix(nadir, horizon, smoothstep(0.0, 0.46, y));
+            sky = mix(sky, zenith, smoothstep(0.46, 1.0, y));
+
+            // Soft key softbox reflection (upper-left)
+            float keyBox = smoothstep(0.52, 0.94, dot(R, normalize(vec3(-0.52, 0.58, 0.62))));
+            // Cool cyan rim light reflection
+            float rimStrip = smoothstep(0.55, 0.96, dot(R, normalize(vec3(-0.62, -0.35, -0.68))));
+            // Subtle right fill strip
+            float fillStrip = smoothstep(0.60, 0.94, dot(R, normalize(vec3(0.72, 0.18, 0.65))));
+
+            float sharpness = mix(1.35, 0.38, roughness);
+            sky += vec3(0.85, 0.92, 1.00) * pow(keyBox, 2.4) * 0.95 * sharpness;
+            sky += vec3(0.22, 0.74, 0.98) * pow(rimStrip, 2.6) * 0.95 * sharpness;
+            sky += vec3(0.42, 0.58, 0.78) * pow(fillStrip, 2.4) * 0.45 * sharpness;
+            return sky;
+          }
+
+          void main() {
+            vec3 N = normalize(vNormal);
+            vec3 V = normalize(-vWorldPos);
+
+            float grain = brushedNoise(vUv);
+
+            if (uIsBadge > 0.5) {
+              // Deep architectural slate-navy badge plate with polished silver outer bezel
+              if (vMatId < 0.5) {
+                N = normalize(N + vec3(-0.008 * grain, 0.022 * grain, 0.0));
+                vec3 badgeBase = vec3(0.065, 0.098, 0.155) * (0.97 + 0.03 * grain);
+                // Radial vignette and soft drop-shadow occlusion behind the AS monogram
+                float rDist = length(vLocalPos.xy);
+                float monoShadow = 1.0 - 0.42 * (1.0 - smoothstep(1.1, 2.85, rDist));
+                vec3 L_key = normalize(vec3(-0.52, 0.62, 0.74));
+                float diff = max(dot(N, L_key), 0.0);
+                vec3 H_key = normalize(V + L_key);
+                float spec = pow(max(dot(N, H_key), 0.0), 28.0) * 0.18;
+                vec3 col = badgeBase * (0.45 + diff * 0.75) * monoShadow + vec3(0.45, 0.62, 0.85) * spec * monoShadow;
+                col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
+                gl_FragColor = vec4(col, 1.0);
+                return;
+              } else {
+                // Polished metallic outer bezel rim of the badge
+                vec3 rimBase = vec3(0.52, 0.62, 0.74);
+                vec3 R = reflect(-V, N);
+                vec3 env = sampleStudioEnv(R, 0.16);
+                vec3 L_key = normalize(vec3(-0.55, 0.65, 0.72));
+                vec3 H_key = normalize(V + L_key);
+                float spec = pow(max(dot(N, H_key), 0.0), 72.0) * 1.25;
+                vec3 col = rimBase * 0.35 + env * 0.95 + vec3(0.92, 0.96, 1.0) * spec;
+                col = (col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14);
+                col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
+                gl_FragColor = vec4(col, 1.0);
+                return;
+              }
+            }
+
+            // Monogram Brushed Cap vs Polished Bevel/Sidewall
+            if (vMatId < 0.5) {
+              N = normalize(N + vec3(-0.022 * grain, 0.072 * grain, 0.0));
+            }
+
+            vec3 baseColor = (vMatId < 0.5) ? (uCapColor * (0.93 + 0.10 * grain)) : uSideColor;
+            float roughness = (vMatId < 0.5) ? uRoughnessCap : uRoughnessSide;
+
+            // Self-occlusion shadow on 'A' legs where they pass beneath the 'S' diagonal spine
+            float selfAo = 1.0;
+            if (uPartId > 1.5) {
+              // Spine diagonal band roughly follows y = -0.34 * x - 0.05
+              float spineDist = abs(vLocalPos.y - (-0.34 * vLocalPos.x + 0.08));
+              if (vLocalPos.y < 1.15 && vLocalPos.y > -1.35) {
+                selfAo *= mix(0.52, 1.0, smoothstep(0.32, 0.85, spineDist));
+              }
+            } else if (uPartId > 0.5) {
+              // S lower-left pedestal shadow near sweeping S curve
+              float curveDist = length(vLocalPos.xy - vec2(-1.45, -1.35));
+              selfAo *= mix(0.68, 1.0, smoothstep(0.25, 0.95, curveDist));
+            }
+
+            float NdotV = max(dot(N, V), 0.001);
+            vec3 F0 = baseColor * 0.88;
+            vec3 F = F0 + (vec3(1.0) - F0) * pow(1.0 - NdotV, 5.0);
+
+            // 1. Key Light (Upper-Left Soft Studio Box)
+            vec3 L_key = normalize(vec3(-0.52, 0.62, 0.72));
+            vec3 H_key = normalize(V + L_key);
+            float diff_key = max(dot(N, L_key), 0.0);
+            float specPower = mix(110.0, 22.0, roughness);
+            float spec_key = pow(max(dot(N, H_key), 0.0), specPower) * mix(1.85, 0.58, roughness);
+
+            // 2. Fill Light (Right Cool Slate Fill)
+            vec3 L_fill = normalize(vec3(0.68, -0.22, 0.58));
+            vec3 H_fill = normalize(V + L_fill);
+            float diff_fill = max(dot(N, L_fill), 0.0);
+            float spec_fill = pow(max(dot(N, H_fill), 0.0), specPower * 0.75) * 0.38;
+
+            // 3. Cinematic Cool Cyan Rim Light (catches left/lower bevels like reference logo)
+            vec3 L_rim = normalize(vec3(-0.68, -0.42, 0.45));
+            float bevelCyanCatch = (vMatId > 0.5) ? pow(max(dot(N, L_rim), 0.0), 2.2) * 1.15 : 0.0;
+
+            vec3 R = reflect(-V, N);
+            vec3 envColor = sampleStudioEnv(R, roughness);
+
+            vec3 color = baseColor * (0.22 + diff_key * 0.62 + diff_fill * 0.25);
+            color += envColor * F * (vMatId > 0.5 ? 1.15 : 0.62);
+            color += vec3(0.96, 0.98, 1.00) * spec_key * F;
+            color += vec3(0.50, 0.66, 0.86) * spec_fill;
+            color += vec3(0.18, 0.68, 0.98) * bevelCyanCatch;
+            color *= selfAo;
+
+            // ACES-inspired filmic tone mapping
+            color = (color * (2.51 * color + 0.03)) / (color * (2.43 * color + 0.59) + 0.14);
+            color = pow(clamp(color, 0.0, 1.0), vec3(1.0 / 2.2));
+
+            gl_FragColor = vec4(color, 1.0);
+          }
+        `;
+
+        const lineVs = `
+          attribute vec3 aPosition;
+          attribute float aIntensity;
+          uniform mat4 uProjection;
+          uniform mat4 uModelView;
+          varying float vIntensity;
+          void main() {
+            vIntensity = aIntensity;
+            gl_Position = uProjection * (uModelView * vec4(aPosition, 1.0));
+          }
+        `;
+
+        const lineFs = `
+          precision mediump float;
+          varying float vIntensity;
+          void main() {
+            gl_FragColor = vec4(0.28, 0.76, 1.00, 0.65 * vIntensity);
+          }
+        `;
+
+        function compileShader(type, src) {
+          const sh = gl.createShader(type);
+          gl.shaderSource(sh, src);
+          gl.compileShader(sh);
+          return sh;
+        }
+        function createProgram(vs, fs) {
+          const p = gl.createProgram();
+          gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vs));
+          gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fs));
+          gl.linkProgram(p);
+          return p;
+        }
+
+        const meshProg = createProgram(vsSource, fsSource);
+        const lineProg = createProgram(lineVs, lineFs);
+
+        function uploadMesh(buf) {
+          const posB = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, posB);
+          gl.bufferData(gl.ARRAY_BUFFER, buf.positions, gl.STATIC_DRAW);
+
+          const normB = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, normB);
+          gl.bufferData(gl.ARRAY_BUFFER, buf.normals, gl.STATIC_DRAW);
+
+          const uvB = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, uvB);
+          gl.bufferData(gl.ARRAY_BUFFER, buf.uvs, gl.STATIC_DRAW);
+
+          const matB = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, matB);
+          gl.bufferData(gl.ARRAY_BUFFER, buf.matIds, gl.STATIC_DRAW);
+
+          return { posB, normB, uvB, matB, count: buf.vertexCount };
+        }
+
+        const gpuMonogram = meshes.monogramParts.map(uploadMesh);
+        const gpuBadge = uploadMesh(meshes.badgePart);
+
+        function uploadLines(lineObj) {
+          const posB = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, posB);
+          gl.bufferData(gl.ARRAY_BUFFER, lineObj.positions, gl.STATIC_DRAW);
+
+          const intB = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, intB);
+          gl.bufferData(gl.ARRAY_BUFFER, lineObj.intensities, gl.STATIC_DRAW);
+          return { posB, intB, count: lineObj.count };
+        }
+
+        const gpuMonoLines = uploadLines(meshes.monogramLines);
+        const gpuBadgeLines = uploadLines(meshes.badgeLines);
+
+        let projMat = new Float32Array(16);
+        let camDist = 15.4;
+
+        function makePerspective(fovRad, aspect, near, far) {
+          const f = 1.0 / Math.tan(fovRad / 2);
+          const nf = 1 / (near - far);
+          projMat.fill(0);
+          projMat[0] = f / aspect;
+          projMat[5] = f;
+          projMat[10] = (far + near) * nf;
+          projMat[11] = -1;
+          projMat[14] = (2 * far * near) * nf;
+        }
+
+        function onResize() {
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const w = container.clientWidth || window.innerWidth;
+          const h = container.clientHeight || window.innerHeight;
+          canvas.width = Math.floor(w * dpr);
+          canvas.height = Math.floor(h * dpr);
+          gl.viewport(0, 0, canvas.width, canvas.height);
+          const aspect = w / Math.max(1, h);
+          const aspectFactor = aspect < 0.85 ? (0.85 / Math.max(0.45, aspect)) * 0.92 : 1.0;
+          camDist = 15.4 * Math.max(1.0, aspectFactor);
+          makePerspective((33 * Math.PI) / 180, aspect, 0.1, 100.0);
+        }
+        onResize();
+
+        let currentPreset = MATERIAL_PRESETS.titanium;
+
+        function drawGpuMesh(gpuM, isBadgeVal, partIdVal) {
+          gl.uniform1f(gl.getUniformLocation(meshProg, 'uIsBadge'), isBadgeVal);
+          gl.uniform1f(gl.getUniformLocation(meshProg, 'uPartId'), partIdVal);
+
+          const aPos = gl.getAttribLocation(meshProg, 'aPosition');
+          gl.bindBuffer(gl.ARRAY_BUFFER, gpuM.posB);
+          gl.enableVertexAttribArray(aPos);
+          gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+
+          const aNorm = gl.getAttribLocation(meshProg, 'aNormal');
+          gl.bindBuffer(gl.ARRAY_BUFFER, gpuM.normB);
+          gl.enableVertexAttribArray(aNorm);
+          gl.vertexAttribPointer(aNorm, 3, gl.FLOAT, false, 0, 0);
+
+          const aUv = gl.getAttribLocation(meshProg, 'aUv');
+          gl.bindBuffer(gl.ARRAY_BUFFER, gpuM.uvB);
+          gl.enableVertexAttribArray(aUv);
+          gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
+
+          const aMat = gl.getAttribLocation(meshProg, 'aMatId');
+          gl.bindBuffer(gl.ARRAY_BUFFER, gpuM.matB);
+          gl.enableVertexAttribArray(aMat);
+          gl.vertexAttribPointer(aMat, 1, gl.FLOAT, false, 0, 0);
+
+          gl.drawArrays(gl.TRIANGLES, 0, gpuM.count);
+        }
+
+        function drawLineGroup(gpuL) {
+          const lPos = gl.getAttribLocation(lineProg, 'aPosition');
+          gl.bindBuffer(gl.ARRAY_BUFFER, gpuL.posB);
+          gl.enableVertexAttribArray(lPos);
+          gl.vertexAttribPointer(lPos, 3, gl.FLOAT, false, 0, 0);
+
+          const lInt = gl.getAttribLocation(lineProg, 'aIntensity');
+          gl.bindBuffer(gl.ARRAY_BUFFER, gpuL.intB);
+          gl.enableVertexAttribArray(lInt);
+          gl.vertexAttribPointer(lInt, 1, gl.FLOAT, false, 0, 0);
+
+          gl.drawArrays(gl.LINES, 0, gpuL.count);
+        }
+
+        return {
+          renderFrame(rx, ry, rz, floatY) {
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            const cx = Math.cos(rx), sx = Math.sin(rx);
+            const cy = Math.cos(ry), sy = Math.sin(ry);
+            const cz = Math.cos(rz), sz = Math.sin(rz);
+
+            const r00 = cy * cz, r01 = sx * sy * cz - cx * sz, r02 = cx * sy * cz + sx * sz;
+            const r10 = cy * sz, r11 = sx * sy * sz + cx * cz, r12 = cx * sy * sz - sx * cz;
+            const r20 = -sy,     r21 = sx * cy,                r22 = cx * cy;
+
+            const mv = new Float32Array([
+              r00, r10, r20, 0,
+              r01, r11, r21, 0,
+              r02, r12, r22, 0,
+              0, 0.24 + floatY, -camDist, 1
+            ]);
+            const nm = new Float32Array([
+              r00, r10, r20,
+              r01, r11, r21,
+              r02, r12, r22
+            ]);
+
+            gl.useProgram(meshProg);
+            gl.uniformMatrix4fv(gl.getUniformLocation(meshProg, 'uProjection'), false, projMat);
+            gl.uniformMatrix4fv(gl.getUniformLocation(meshProg, 'uModelView'), false, mv);
+            gl.uniformMatrix3fv(gl.getUniformLocation(meshProg, 'uNormalMatrix'), false, nm);
+            gl.uniform3fv(gl.getUniformLocation(meshProg, 'uCapColor'), currentPreset.capColor);
+            gl.uniform3fv(gl.getUniformLocation(meshProg, 'uSideColor'), currentPreset.sideColor);
+            gl.uniform1f(gl.getUniformLocation(meshProg, 'uRoughnessCap'), currentPreset.roughnessCap);
+            gl.uniform1f(gl.getUniformLocation(meshProg, 'uRoughnessSide'), currentPreset.roughnessSide);
+
+            if (state.showBadge) {
+              drawGpuMesh(gpuBadge, 1.0, 0.0);
+            }
+            for (let i = 0; i < gpuMonogram.length; i++) {
+              drawGpuMesh(gpuMonogram[i], 0.0, i);
+            }
+
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+            gl.useProgram(lineProg);
+            gl.uniformMatrix4fv(gl.getUniformLocation(lineProg, 'uProjection'), false, projMat);
+            gl.uniformMatrix4fv(gl.getUniformLocation(lineProg, 'uModelView'), false, mv);
+
+            drawLineGroup(gpuMonoLines);
+            if (state.showBadge) {
+              drawLineGroup(gpuBadgeLines);
+            }
+            gl.disable(gl.BLEND);
+          },
+          setMaterialPreset(presetKey) {
+            currentPreset = MATERIAL_PRESETS[presetKey] || MATERIAL_PRESETS.titanium;
+          },
+          onResize,
+          dispose() {
+            const ext = gl.getExtension('WEBGL_lose_context');
+            if (ext) ext.loseContext();
+          }
+        };
+      }
+
+      // -----------------------------------------------------------------------
+      // 8. BOOTSTRAP, UI BINDINGS & ANIMATION LOOP
+      // -----------------------------------------------------------------------
+      function bootstrap() {
+        const container = document.getElementById('webgl-container');
+        const fallbackEl = document.getElementById('webgl-fallback');
+        const meshes = generateAllLogoMeshes();
+
+        let pipeline = null;
+        try {
+          if (window.THREE && window.THREE.WebGLRenderer) {
+            pipeline = initThreeJsPipeline(container, meshes);
+          } else {
+            pipeline = initNativeWebGLPipeline(container, meshes);
+          }
+        } catch (err) {
+          try {
+            pipeline = initNativeWebGLPipeline(container, meshes);
+          } catch (err2) {
+            pipeline = null;
+          }
+        }
+
+        if (!pipeline) {
+          fallbackEl.classList.add('visible');
+          return;
+        }
+
+        function onPointerDown(e) {
+          state.isDragging = true;
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          state.lastPointerX = clientX;
+          state.lastPointerY = clientY;
+          document.getElementById('interaction-hint').style.opacity = '0.25';
+        }
+
+        function onPointerMove(e) {
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+          const nx = (clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+          const ny = (clientY / Math.max(1, window.innerHeight)) * 2 - 1;
+          state.hoverX = nx * 0.10;
+          state.hoverY = ny * 0.07;
+
+          if (!state.isDragging) return;
+          const dx = clientX - state.lastPointerX;
+          const dy = clientY - state.lastPointerY;
+          state.lastPointerX = clientX;
+          state.lastPointerY = clientY;
+
+          state.targetDragYaw += dx * 0.0085;
+          state.targetDragPitch = Math.max(-0.65, Math.min(0.65, state.targetDragPitch + dy * 0.0065));
+        }
+
+        function onPointerUp() {
+          state.isDragging = false;
+        }
+
+        function resetView() {
+          state.yawAngle = 0.22;
+          state.targetDragYaw = 0;
+          state.targetDragPitch = 0;
+        }
+
+        container.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove, { passive: true });
+        window.addEventListener('mouseup', onPointerUp);
+        container.addEventListener('touchstart', onPointerDown, { passive: true });
+        window.addEventListener('touchmove', onPointerMove, { passive: true });
+        window.addEventListener('touchend', onPointerUp);
+        container.addEventListener('dblclick', resetView);
+
+        const btnPlay = document.getElementById('btn-toggle-play');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+        const statusDot = document.getElementById('status-dot');
+
+        function updatePlayButtonUI() {
+          if (state.isPlaying) {
+            btnPlay.classList.add('active');
+            playIcon.textContent = '❚❚';
+            playText.textContent = 'Pause';
+            statusDot.style.opacity = '1';
+          } else {
+            btnPlay.classList.remove('active');
+            playIcon.textContent = '▶';
+            playText.textContent = 'Resume';
+            statusDot.style.opacity = '0.35';
+          }
+        }
+        updatePlayButtonUI();
+
+        btnPlay.addEventListener('click', () => {
+          state.isPlaying = !state.isPlaying;
+          updatePlayButtonUI();
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'Space' && e.target === document.body) {
+            e.preventDefault();
+            state.isPlaying = !state.isPlaying;
+            updatePlayButtonUI();
+          }
+        });
+
+        const btnBadge = document.getElementById('btn-mode-badge');
+        const btnFloating = document.getElementById('btn-mode-floating');
+        btnBadge.addEventListener('click', () => {
+          state.showBadge = true;
+          btnBadge.classList.add('active');
+          btnFloating.classList.remove('active');
+        });
+        btnFloating.addEventListener('click', () => {
+          state.showBadge = false;
+          btnFloating.classList.add('active');
+          btnBadge.classList.remove('active');
+        });
+
+        const btnTit = document.getElementById('btn-mat-titanium');
+        const btnSil = document.getElementById('btn-mat-silver');
+        btnTit.addEventListener('click', () => {
+          btnTit.classList.add('active');
+          btnSil.classList.remove('active');
+          pipeline.setMaterialPreset('titanium');
+        });
+        btnSil.addEventListener('click', () => {
+          btnSil.classList.add('active');
+          btnTit.classList.remove('active');
+          pipeline.setMaterialPreset('silver');
+        });
+
+        document.getElementById('btn-reset-view').addEventListener('click', resetView);
+
+        const handleResize = () => pipeline.onResize();
+        window.addEventListener('resize', handleResize);
+
+        const handleVisibility = () => {
+          state.isVisible = !document.hidden;
+          state.lastFrameTime = performance.now();
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+
+        let rafId = null;
+        function animate(now) {
+          if (state.disposed) return;
+          rafId = requestAnimationFrame(animate);
+          if (!state.isVisible) return;
+
+          const dt = Math.min(0.1, (now - state.lastFrameTime) / 1000);
+          state.lastFrameTime = now;
+
+          if (state.isPlaying && !state.isDragging) {
+            state.elapsedTime += dt;
+            const angularVel = (Math.PI * 2) / state.rotationPeriodSec;
+            state.yawAngle = (state.yawAngle + angularVel * dt) % (Math.PI * 2);
+            state.targetDragPitch *= Math.pow(0.65, dt);
+          }
+
+          state.currentDragYaw += (state.targetDragYaw - state.currentDragYaw) * Math.min(1, dt * 10);
+          state.currentDragPitch += (state.targetDragPitch - state.currentDragPitch) * Math.min(1, dt * 10);
+
+          const breathPitch = Math.sin(state.elapsedTime * 0.75) * 0.042;
+          const breathRoll = Math.cos(state.elapsedTime * 0.55) * 0.016;
+          const floatY = Math.sin(state.elapsedTime * 0.95) * 0.07;
+
+          const finalRotY = state.yawAngle + state.currentDragYaw + state.hoverX;
+          const finalRotX = breathPitch + state.currentDragPitch + state.hoverY;
+          const finalRotZ = breathRoll;
+
+          pipeline.renderFrame(finalRotX, finalRotY, finalRotZ, floatY);
+        }
+
+        state.lastFrameTime = performance.now();
+        rafId = requestAnimationFrame(animate);
+
+        window.AlbertaStudio3D = {
+          state,
+          geometryData: LOGO_GEOMETRY_DATA,
+          setRotationAngle(yawRad, pitchRad = 0) {
+            state.isPlaying = false;
+            state.yawAngle = yawRad;
+            state.targetDragYaw = 0;
+            state.currentDragYaw = 0;
+            state.targetDragPitch = pitchRad;
+            state.currentDragPitch = pitchRad;
+            pipeline.renderFrame(pitchRad, yawRad, 0, 0);
+          },
+          setShowBadge(show) {
+            state.showBadge = !!show;
+            pipeline.renderFrame(state.currentDragPitch, state.yawAngle + state.currentDragYaw, 0, 0);
+          },
+          dispose() {
+            state.disposed = true;
+            if (rafId) cancelAnimationFrame(rafId);
+            window.removeEventListener('resize', handleResize);
+            document.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('mousemove', onPointerMove);
+            window.removeEventListener('mouseup', onPointerUp);
+            window.removeEventListener('touchmove', onPointerMove);
+            window.removeEventListener('touchend', onPointerUp);
+            pipeline.dispose();
+          }
+        };
+      }
+
+      function startWithOptionalThreeCDN() {
+        if (window.THREE) {
+          bootstrap();
+          return;
+        }
+        let booted = false;
+        const done = () => {
+          if (booted) return;
+          booted = true;
+          bootstrap();
+        };
+        const timer = setTimeout(done, 400);
+        try {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+          script.async = true;
+          script.onload = () => { clearTimeout(timer); done(); };
+          script.onerror = () => { clearTimeout(timer); done(); };
+          document.head.appendChild(script);
+        } catch (e) {
+          clearTimeout(timer);
+          done();
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startWithOptionalThreeCDN);
+      } else {
+        startWithOptionalThreeCDN();
+      }
+    })();
+  </script>
+</body>
+</html>

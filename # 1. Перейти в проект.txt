@@ -1,0 +1,14 @@
+# 1. Перейти в проект
+cd "C:\Users\Andrii Zaripov\Desktop\An\Antigravity\upsunday-showcase"
+
+# 2. Запуск локального продакшен-сервера (порт 3000)
+npx next start -p 3000
+
+# 3. Пересборка при внесении изменений в код
+npm run build
+
+# 4. Перегенерация 3D-кадров и перекодирование видео (при необходимости)
+node scratch/render-full-sculpture-3d.js
+
+# 5. Экспресс-проверка Google Lighthouse
+npx -y lighthouse http://localhost:3000 --chrome-flags="--headless=new" --preset=desktop --quiet

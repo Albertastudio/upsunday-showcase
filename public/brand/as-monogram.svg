@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" fill="none">
+  <defs>
+    <!-- Titanium-Zinc brushed metallic gradient -->
+    <linearGradient id="zincGrad" x1="0.1" y1="0.1" x2="0.9" y2="0.9">
+      <stop offset="0%" stop-color="#cbd5e1"/>
+      <stop offset="25%" stop-color="#94a3b8"/>
+      <stop offset="60%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+
+    <!-- Ring brushed gradient -->
+    <linearGradient id="ringGrad" x1="0.2" y1="0.1" x2="0.8" y2="0.9">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="50%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+
+    <!-- Emerald glint reflection -->
+    <linearGradient id="emeraldGlint" x1="0.3" y1="0.2" x2="0.7" y2="0.8">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.85"/>
+      <stop offset="35%" stop-color="#10b981" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#059669" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Drop shadow for sculptural depth -->
+    <filter id="sculptShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.75"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#10b981" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#sculptShadow)">
+    <!-- 1. Circular Frame Ring -->
+    <path d="M 480 144 A 336 336 0 1 0 480 816 A 336 336 0 1 0 480 144 Z M 480 170 A 310 310 0 1 1 480 790 A 310 310 0 1 1 480 170 Z"
+          fill="url(#ringGrad)" stroke="#64748b" stroke-width="1.5" stroke-opacity="0.4"/>
+
+    <!-- 2. Letter A (Roman Antiqua) -->
+    <path d="
+      M 476 95
+      L 494 102
+      L 636 440
+      L 717 680
+      L 765 805
+      L 805 810
+      L 600 810
+      C 620 810 628 795 624 780
+      L 545 580
+      L 315 580
+      L 260 690
+      L 310 816
+      L 59 816
+      C 100 816 135 795 142 760
+      L 142 535
+      C 142 515 150 505 156 505
+      C 166 505 175 520 180 538
+      L 195 650
+      L 260 690
+      L 315 566
+      L 435 260
+      Z
+      M 476 215
+      L 530 566
+      L 325 566
+      Z
+    " fill="url(#zincGrad)" fill-rule="evenodd" stroke="#94a3b8" stroke-width="2" stroke-opacity="0.5"/>
+
+    <!-- 3. Letter S (Masterpiece Sculptural Ribbon) -->
+    <path d="
+      M 760 140
+      C 670 150 500 125 360 125
+      C 240 125 150 180 153 300
+      C 155 380 260 460 420 530
+      C 560 590 680 640 710 690
+      C 730 730 700 780 630 805
+      C 580 815 550 812 535 810
+      L 475 810
+      C 500 825 570 830 630 830
+      C 740 815 817 740 817 630
+      C 817 560 700 490 550 430
+      C 420 370 320 320 280 270
+      C 260 230 300 185 420 185
+      C 540 185 660 210 760 380
+      Z
+    " fill="url(#zincGrad)" stroke="#94a3b8" stroke-width="2.5" stroke-opacity="0.6"/>
+
+    <!-- Subtle Emerald Glint Overlay on S chamfers -->
+    <path d="
+      M 760 140
+      C 670 150 500 125 360 125
+      C 240 125 150 180 153 300
+      C 155 380 260 460 420 530
+      C 560 590 680 640 710 690
+      C 730 730 700 780 630 805
+      C 580 815 550 812 535 810
+      L 475 810
+      C 500 825 570 830 630 830
+      C 740 815 817 740 817 630
+      C 817 560 700 490 550 430
+      C 420 370 320 320 280 270
+      C 260 230 300 185 420 185
+      C 540 185 660 210 760 380
+      Z
+    " fill="url(#emeraldGlint)" opacity="0.45" style="mix-blend-mode: screen;"/>
+  </g>
+</svg>
